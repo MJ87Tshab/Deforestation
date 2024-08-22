@@ -87,6 +87,11 @@ FROM Table_1
 WHERE RANK_1 = 1 AND Region != 'World'```
 
 
+## Results/Findings
+
+The results of the analysis are summarised as follows:
+
+
 
 
 
