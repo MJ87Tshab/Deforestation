@@ -16,10 +16,7 @@ The datasets that were used for this analysis were:
 
 ## Data Preparation
 
-In the initial phase, we performed the following steps:
-1. We created a database(DB) named "Deforestation".
-2. All 3 tables loaded on the DB
-
+I created the database(DB) named "Deforestation" where I added the three datasets.
 
 ## Exploratory Data Analysis
 
@@ -34,47 +31,75 @@ Exploring the Forestation Data to answer the below  questions:
 
 ## Data Analysis
 
+I analysed the data to answer the below questions:
 
-Total number of countries in Deforestation
+
+
+#### The total number of countries involved in Deforestation
+
 ```SQL
-SELECT COUNT(*) AS Total_Number_of_Countries FROM (
-SELECT country_name FROM FOREST_AREA
-UNION
-SELECT country_name FROM LAND_AREA
-UNION
-SELECT country_name FROM REGION) AS T```
+WITH table_1 AS 
+(
+SELECT * FROM 
+(SELECT COUNTRY_NAME, YEAR, forest_area_sqkm,
+RANK() OVER(PARTITION BY COUNTRY_NAME ORDER BY forest_area_sqkm DESC) AS COL_rank
+FROM Forest_Area) table_1
+WHERE COL_RANK > 1),
 
+table_2 AS 
+(
+SELECT COUNTRY_NAME, YEAR, FOREST_AREA_SQKM,
+LAG(forest_area_sqkm) OVER(PARTITION BY COUNTRY_NAME ORDER BY YEAR ASC) AS PREVIOUS_FA
+FROM table_1),
 
-- Show income groups of countries with total area between 75k - 150k sqm
-```SELECT LA.Country_name, YEAR, Total_area_sq_mi, income_group FROM LAND_AREA AS LA
+table_3 AS 
+(SELECT * FROM table_2 WHERE PREVIOUS_FA IS NOT NULL),
+
+table_4 AS 
+(SELECT *, 
+CASE WHEN FOREST_AREA_SQKM >= PREVIOUS_FA THEN 'AFFORESTATION' ELSE 'DEFORESTATION' END AS FOREST_STATE
+FROM table_3)
+
+SELECT COUNT(DISTINCT COUNTRY_NAME) AS NO_COUNTRIES_INVOLVED_IN_DEFORESTATION FROM table_4
+WHERE FOREST_STATE = 'DEFORESTATION'
+```
+
+#### Show income groups of countries with total area between 75k - 150k sqm
+
+``` SQL
+SELECT LA.Country_name, YEAR, Total_area_sq_mi, income_group FROM LAND_AREA AS LA
 INNER JOIN Region as R
 ON LA.country_name = R.country_name
 WHERE LA.total_area_sq_mi BETWEEN '75000' AND '150000'
-ORDER BY LA.country_name```
+ORDER BY LA.country_name
+```
 
+#### Calculate average area in square miles for countries in the 'upper middle income region'. Compare the result with the rest of the income categories.
 
-- Calculate average area in square miles for countries in the 'upper middle income region'. Compare the result with the rest of the income categories.
-```SELECT AVG(total_area_sq_mi) AS Average_area, income_group FROM LAND_AREA AS LA
+``` SQL
+SELECT AVG(total_area_sq_mi) AS Average_area, income_group FROM LAND_AREA AS LA
 INNER JOIN REGION AS R
 ON LA.COUNTRY_NAME = R.COUNTRY_NAME
 WHERE R.Income_group IN ('upper middle income','lower middle income','low income','high income')
 group by income_group
-HAVING income_group <> 'null'```
+HAVING income_group <> 'null'
+```
 
 
+#### Determine the total forest area in square km for countries in the 'high income' group. Compare result with the rest of the income categories
 
-- Determine the total forest area in square km for countries in the 'high income' group. Compare result with the rest of the income categories
-
-```SELECT sum(forest_area_sqkm) AS Average_Forest_Area, income_group FROM Forest_Area AS FA
+``` SQL
+SELECT sum(forest_area_sqkm) AS Average_Forest_Area, income_group FROM Forest_Area AS FA
 INNER JOIN Region AS R
 ON FA.COUNTRY_NAME = R.COUNTRY_NAME
 WHERE FA.forest_area_sqkm IS NOT NULL AND income_group IN ('High income','Low income','Upper middle income','lower middle income')
-GROUP BY income_group```
+GROUP BY income_group
+```
 
+#### Show countries from each region(continent) having the highest total forest areas.
 
-- Show countries from each region(continent) having the highest total forest areas.
-
-```WITH table_1 AS
+```SQL
+WITH table_1 AS
 
 (SELECT REGION, fa.country_name, SUM(forest_area_sqkm) AS Forest_Area, RANK() OVER (PARTITION BY REGION ORDER BY forest_area_sqkm DESC) as Rank_1 FROM Forest_Area AS FA
 JOIN REGION AS R
@@ -84,12 +109,12 @@ group by region, fa.country_name ,forest_area_sqkm)
 
 SELECT Region, country_name, Forest_Area, Rank_1 
 FROM Table_1
-WHERE RANK_1 = 1 AND Region != 'World'```
-
+WHERE RANK_1 = 1 AND Region != 'World'
+```
 
 ## Results/Findings
 
-The results of the analysis are summarised as follows:
+A key finding in this analysis is that the upper middle income group covers the highest area in square miles as well as highest forest_area per square kilometer.
 
 
 
